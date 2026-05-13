@@ -1,0 +1,78 @@
+name: CI/CD
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*.*.*"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  IMAGE_NAME: ghcr.io/${{ github.repository }}/ruralai-learning-engine
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run unit and integration tests
+        run: pytest -q
+
+      - name: Run dependency audit
+        run: safety check -r requirements.txt --full-report
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t "$IMAGE_NAME:${{ github.sha }}" .
+
+      - name: Log in to GitHub Container Registry
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish tagged image
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          docker tag "$IMAGE_NAME:${{ github.sha }}" "$IMAGE_NAME:${{ github.ref_name }}"
+          docker push "$IMAGE_NAME:${{ github.ref_name }}"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: docker
+    if: startsWith(github.ref, 'refs/tags/') && vars.ENABLE_CLOUD_DEPLOY == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: infra/terraform
+        run: terraform init
+
+      - name: Terraform plan blue-green deploy
+        working-directory: infra/terraform
+        run: terraform plan -var="image_tag=${{ github.ref_name }}"
+
+      - name: Terraform apply blue-green deploy
+        working-directory: infra/terraform
+        run: terraform apply -auto-approve -var="image_tag=${{ github.ref_name }}"

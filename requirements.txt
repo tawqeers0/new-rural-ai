@@ -1,0 +1,17 @@
+fastapi==0.136.1
+uvicorn==0.46.0
+pydantic-settings==2.6.1
+python-dotenv==1.1.0
+supabase==2.30.0
+sqlalchemy==2.0.39
+psycopg2-binary==2.9.12
+httpx==0.28.1
+langchain-openai==1.2.1
+# chromadb==1.5.9 # REMOVED for Vercel (exceeds 500MB limit, uses local fallback)
+# sentence-transformers==5.4.1 # REMOVED for Vercel (installs PyTorch, exceeds limit)
+africastalking==2.0.2
+redis==7.4.0
+pillow==12.2.0
+slowapi==0.1.9
+# locust==2.44.0
+# safety==3.7.0

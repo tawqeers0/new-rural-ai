@@ -1,0 +1,13 @@
+.env
+.git
+.github
+.pytest_cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+chroma_db
+chroma_db_phase6
+reports
+node_modules
